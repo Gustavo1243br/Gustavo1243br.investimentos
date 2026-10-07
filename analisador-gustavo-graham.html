@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Analisador Gustavo & Graham</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,700&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#EEF1F4;--card:#fff;--ink:#17212B;--mut:#5B6875;--line:#D5DCE3;--acc:#0F5C4D;--ok:#14724F;--bad:#B3261E;--warn:#9A6200;--okbg:#E3F3EC;--badbg:#FBE7E5;--warnbg:#FBF0DA;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12181E;--card:#1A222A;--ink:#E6ECF1;--mut:#93A1AE;--line:#2B3640;--acc:#4DB89C;--ok:#4DBB8A;--bad:#F0776E;--warn:#E0B04F;--okbg:#14301F;--badbg:#3A1D1B;--warnbg:#3A2E14}}
+:root[data-theme="dark"]{--bg:#12181E;--card:#1A222A;--ink:#E6ECF1;--mut:#93A1AE;--line:#2B3640;--acc:#4DB89C;--ok:#4DBB8A;--bad:#F0776E;--warn:#E0B04F;--okbg:#14301F;--badbg:#3A1D1B;--warnbg:#3A2E14}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Instrument Sans",system-ui,sans-serif}
+main{max-width:780px;margin:0 auto;padding:28px 18px 60px}
+h1{font:700 clamp(28px,6vw,40px)/1.1 Newsreader,Georgia,serif;margin:0 0 6px}
+.sub{color:var(--mut);margin:0 0 22px;max-width:60ch}
+nav{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:16px}
+nav button{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 14px;border-radius:8px;font:inherit;cursor:pointer}
+nav button[aria-selected=true]{background:var(--acc);border-color:var(--acc);color:var(--card);font-weight:600}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px}
+h3{font-size:15px;margin:20px 0 8px}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.g5{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px}
+label{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--mut)}
+input,select{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);width:100%}
+.lt{display:flex;align-items:center;gap:6px}.q{flex:none;width:20px;height:20px;border-radius:50%;border:1px solid var(--mut);background:transparent;color:var(--mut);font:600 12px/1 inherit;cursor:pointer;padding:0}.q[aria-expanded=true]{background:var(--acc);border-color:var(--acc);color:var(--card)}.help{background:var(--bg);border-left:3px solid var(--acc);padding:8px 10px;border-radius:4px;color:var(--ink);font-size:13px;line-height:1.45}.go{margin-top:20px;background:var(--acc);color:var(--card);border:0;border-radius:8px;padding:12px 22px;font:600 16px inherit;cursor:pointer}
+#out{margin-top:22px}
+.err{background:var(--warnbg);color:var(--warn);padding:12px 14px;border-radius:8px;font-weight:500}
+.v{border-left:8px solid;border-radius:6px;padding:16px 18px;margin-bottom:16px}
+.v.good{background:var(--okbg);border-color:var(--ok)}.v.bad{background:var(--badbg);border-color:var(--bad)}.v.warn{background:var(--warnbg);border-color:var(--warn)}
+.v b{display:block;font:700 clamp(22px,5vw,30px)/1.15 Newsreader,Georgia,serif;margin-bottom:4px}
+.v span{color:var(--ink)}
+.row{display:flex;gap:12px;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--line)}
+.row .t{flex:1}.row small{display:block;color:var(--mut)}
+.tag{flex:none;font-size:13px;font-weight:600;min-width:92px;text-align:right}
+.tag.ok{color:var(--ok)}.tag.no{color:var(--bad)}.tag.warn{color:var(--warn)}.tag.skip{color:var(--mut)}
+.m{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0}
+.m div{border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.m small{color:var(--mut);display:block;font-size:13px}.m strong{font:700 22px Newsreader,Georgia,serif}
+.foot{color:var(--mut);font-size:13px;margin-top:18px}
+</style>
+</head>
+<body>
+<main>
+<h1>Analisador Gustavo &amp; Graham</h1>
+<p class="sub">Preencha os dados do ativo e o site aplica o seu guia: primeiro o filtro eliminatório, depois o valuation de Graham.</p>
+<nav id="tabs" role="tablist"></nav>
+<section class="panel"><div id="form"></div><button class="go" id="run">Analisar</button></section>
+<div id="out" aria-live="polite"></div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const num=id=>{const e=$(id);if(!e)return null;const v=parseFloat(String(e.value).replace(',','.'));return isNaN(v)?null:v};
+const fmt=(v,d=2)=>v==null||!isFinite(v)?'—':v.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const avg=a=>a.reduce((x,y)=>x+y,0)/a.length;
+const yn=[['1','Sim'],['0','Não']];
+const H={
+setor:'<b>Geral</b> = sem exceção: vale a régua completa (dívida, liquidez, P/VPA, produto combinado). Use para indústria, varejo, tecnologia, saúde etc. As outras opções relaxam ou trocam critérios, conforme as exceções do guia.',
+bom:'Negócio consolidado com vantagem competitiva (moat), marca forte ou barreira de entrada alta. Teste: um concorrente rico conseguiria tomar o mercado em 5 anos? As margens e o ROIC ficaram altos por muitos anos? Tipos de moat: marca, escala e custo baixo, custo de troca, efeito de rede, licença/regulação/patente.',
+caixa:'Fluxo de caixa operacional (FCO) é o caixa gerado pela atividade do negócio. Fluxo de caixa livre (FCL) é o FCO menos o CAPEX (investimento em fábricas, máquinas, expansão). Os dois devem ser positivos de forma recorrente (maioria dos últimos 5–10 anos), não só no último. Veja na Demonstração do Fluxo de Caixa ou no Status Invest.',
+div:'Dívida líquida (dívida bruta menos caixa) dividida pelo EBITDA. Mede quantos anos de geração operacional pagariam a dívida. Seu limite: abaixo de 2,0x. Negativo (mais caixa que dívida) é ótimo.',
+roic:'Retorno sobre o capital: ROIC (capital investido), ROE (patrimônio) ou ROI. Seu guia pede 20% ou mais. Use o valor médio de alguns anos, não só o do último. Bancos: use o ROE.',
+rec:'Receita líquida anual em bilhões de reais. Graham pede 1 bi ou mais, ou ser do IBrX-100. Não elimina, só gera alerta.',
+liq:'Ativo circulante dividido pelo passivo circulante. Graham pede 1,5x ou mais. Ignorado em utilities e bancos.',
+d10:'Em quantos dos últimos 10 anos a empresa pagou dividendos (ou JCP). Ações BR: mínimo 8. Ações EUA: 10 de 10, pela tabela do guia.',
+preco:'Cotação atual da ação, na moeda do mercado (R$ ou US$).',
+vpa:'Valor patrimonial por ação: patrimônio líquido dividido pelo número de ações. Está no Fundamentus (VPA) ou no Macrotrends (book value per share).',
+selic:'A Selic de hoje (% ao ano). Define o P/L máximo aceitável: 12% ou mais, 9×; 10–12%, 12×; 7–10%, 15×; abaixo de 7%, 20×.',
+ref:'Estimativa da <b>Selic média dos próximos anos</b>, não a de hoje. Entra na fórmula do valor intrínseco como 4,4 ÷ essa taxa: quanto maior, menor o VI. Seu guia sugere 9,5% como referência conservadora.',
+pl:'P/L atual do índice (ex.: S&P 500 ou Ibovespa). Dá para achar em sites de dados do índice ou do próprio fundo.',
+plm:'Mediana histórica do P/L do mesmo índice. É a base para saber se o índice está acima ou abaixo do normal.',
+rf:'Taxa sem risco do mercado do índice: Selic ou CDI para índice brasileiro, Treasury 10Y para índice americano.',
+pct:'Quanto do seu patrimônio em ações/ETFs esse ETF temático ocupa. Limite do guia: 5–10%.',
+pvp:'Preço dividido pelo valor patrimonial por cota. Abaixo de 1,0 é negociar com desconto sobre o patrimônio.',
+dy:'Dividend yield: dividendos dos últimos 12 meses divididos pelo preço da cota, em % ao ano.',
+vac:'Percentual da área do fundo sem inquilino (vacância física). Máximo no guia: 10%.',
+liqf:'Volume médio negociado por dia, em milhões de reais. Mínimo no guia: R$ 1 mi/dia.',
+anos:'Há quantos anos a gestora administra fundos com histórico verificável. Mínimo no guia: 5 anos.',
+rat:'Nota de risco de crédito dos CRIs da carteira do fundo de papel. O guia pede AA ou melhor.',
+val:'Valor total que você aplicaria no mesmo banco. O FGC cobre até R$ 250 mil por CPF por instituição.',
+tx:'Rentabilidade do CDB como % do CDI. O guia pede no mínimo 100%.',
+na:'Número de ações diferentes na carteira. Graham: entre 10 e 30.',
+ns:'Número de setores diferentes entre as ações. Graham: pelo menos 4.',
+rv:'Percentual da carteira em renda variável (ações, ETFs, FIIs). Graham: entre 25% e 75%, com 50/50 como ponto de partida.'};
+const hb=(id,hp)=>(hp||H[id])?'<button type="button" class="q" aria-label="Ajuda" aria-expanded="false">?</button>':'';
+const hh=(id,hp)=>(hp||H[id])?`<small class="help" hidden>${hp||H[id]}</small>`:'';
+const inp=(id,l,d='',h='',hp)=>`<label><span class="lt">${l}${hb(id,hp)}</span><input id="${id}" inputmode="decimal" value="${d}" placeholder="${h}">${hh(id,hp)}</label>`;
+const sel=(id,l,o,hp)=>`<label><span class="lt">${l}${hb(id,hp)}</span><select id="${id}">${o.map(([v,t])=>`<option value="${v}">${t}</option>`).join('')}</select>${hh(id,hp)}</label>`;
+const C=(st,t,d='')=>({st,t,d});
+const lbl={ok:'Passou',no:'Reprovou',warn:'Atenção',skip:'Não se aplica'};
+
+function stockForm(us){
+ return `<div class="g">${inp('nome','Ticker / empresa','','ex.: WEGE3')}
+ ${us?'':sel('setor','Setor',[['n','Geral'],['b','Banco'],['s','Seguradora asset-light'],['u','Utility (energia, saneamento, rodovias)'],['c','Commodity (Vale, Suzano, Petrobras)']])}
+ ${sel('bom','Bom ativo, com moat e marca forte?',yn)}
+ ${sel('caixa','Fluxo de caixa operacional e livre positivos?',yn)}
+ ${inp('div','Dívida líquida / EBITDA (x)')}${inp('roic','ROI / ROIC / ROE (%)')}
+ ${us?'':inp('rec','Receita líquida (R$ bi)')+inp('liq','Liquidez corrente')}
+ ${inp('d10','Anos com dividendos (de 10)')}${inp('preco','Preço atual')}${inp('vpa','VPA (valor patrimonial por ação)')}
+ ${us?inp('ref','Treasury 10Y (%)','4.3','','Rendimento do título do Tesouro americano de 10 anos, usado no lugar da Selic. Entra na fórmula como 4,4 ÷ essa taxa. Seu guia usa cerca de 4,3%.'):inp('selic','Selic atual (%)')+inp('ref','Selic longa para o VI (%)','9.5')}</div>
+ <h3>${us?'EPS':'LPA'} dos últimos 10 anos (do mais antigo ao mais recente)</h3>
+ <div class="g5">${[...Array(10)].map((_,i)=>inp('l'+i,'Ano '+(i+1))).join('')}</div>`;
+}
+
+function stock(us){
+ const s=us?'n':$('setor').value, cur=us?'US$ ':'R$ ';
+ const L=[...Array(10)].map((_,i)=>num('l'+i));
+ const req=[['preco','preço atual'],['vpa','VPA'],['roic','ROIC'],['d10','anos com dividendos'],['ref','taxa de referência']];
+ if(!us)req.push(['selic','Selic atual']);
+ if(s!=='b')req.push(['div','Dívida líquida / EBITDA']);
+ const miss=req.filter(([id])=>num(id)===null).map(x=>x[1]);
+ if(L.some(v=>v===null))miss.push('os 10 anos de '+(us?'EPS':'LPA'));
+ if(miss.length)return {err:'Faltam: '+miss.join(', ')+'.'};
+ const preco=num('preco'),vpa=num('vpa'),ref=num('ref');
+ const mi=avg(L.slice(0,3)),mf=avg(L.slice(7)),pos=L.filter(v=>v>0).length;
+ const cresc=mi>0?(mf/mi-1)*100:null;
+ const g=mi>0&&mf>0?Math.min(15,(Math.pow(mf/mi,1/7)-1)*100):0;
+ const lref=s==='c'?avg(L.slice(3)):L[9];
+ const pl=lref>0?preco/lref:null, pvp=vpa>0?preco/vpa:null, prod=pl!=null&&pvp!=null?pl*pvp:null;
+ const vi=mf>0?mf*(8.5+2*g)*(4.4/ref):null, max=vi&&vi*.7, cons=vi&&vi*.5;
+ const selic=num('selic'), lim=us?23:selic>=12?9:selic>=10?12:selic>=7?15:20, minD=us?10:8;
+ const E=[],G=[];
+ E.push(C(num('bom')===null&&$('bom').value==='1'?'ok':$('bom').value==='1'?'ok':'no','Bom ativo (moat, marca, barreiras)'));
+ E.push(C($('caixa').value==='1'?'ok':'no','Gera caixa operacional e livre positivos'));
+ const dv=num('div');
+ E.push(s==='b'?C('skip','Dívida líquida / EBITDA < 2,0x','Banco: critério não se aplica'):C(dv<2?'ok':s==='u'?'warn':'no','Dívida líquida / EBITDA < 2,0x','Informado: '+fmt(dv)+'x'+(s==='u'&&dv>=2?' (utility: aceite conforme a previsibilidade regulada)':'')));
+ E.push(C(num('roic')>=20?'ok':'no','ROI / ROIC / ROE ≥ 20%','Informado: '+fmt(num('roic'))+'%'));
+ E.push(C(pos===10?'ok':'no','Lucro positivo nos 10 anos',pos+' de 10 anos positivos'));
+ E.push(C(num('d10')>=minD?'ok':'no','Dividendos em ≥ '+minD+' dos últimos 10 anos','Informado: '+num('d10')+' anos'));
+ E.push(C(cresc!==null&&cresc>=33?'ok':'no','Crescimento do '+(us?'EPS':'LPA')+' ≥ 33% (média final vs. inicial)',cresc===null?'Média inicial ≤ 0, não dá para calcular':'Crescimento: '+fmt(cresc,1)+'%'));
+ const P=[];
+ P.push(C(pl!=null&&pl<=lim?'ok':'no',(us?'P/E':'P/L')+' ≤ '+lim+'×',pl==null?(us?'EPS':'LPA')+' de referência ≤ 0':fmt(pl,1)+'×'+(s==='c'?' (LPA médio de 7 anos)':'')));
+ P.push(s==='b'||s==='s'?C('skip',(us?'P/E × P/Book':'P/L × P/VPA')+' ≤ 22,5','Exceção do setor: use P/L e crescimento como critério'):C(prod!=null&&prod<=22.5?'ok':'no',(us?'P/E × P/Book':'P/L × P/VPA')+' ≤ 22,5',prod==null?'—':fmt(prod,1)));
+ if(!us){
+  G.push(s==='b'||s==='s'?C('skip','P/VPA ≤ 1,5×','Exceção do setor'):C(pvp!=null&&pvp<=1.5?'ok':'no','P/VPA ≤ 1,5×',fmt(pvp)+'×'));
+  const rec=num('rec'),liq=num('liq');
+  if(rec!==null)G.push(C(rec>=1?'ok':'warn','Receita líquida ≥ R$ 1 bi (ou IBrX-100)',fmt(rec)+' bi'));
+  if(liq!==null)G.push(s==='u'||s==='b'?C('skip','Liquidez corrente ≥ 1,5×','Exceção do setor'):C(liq>=1.5?'ok':'warn','Liquidez corrente ≥ 1,5×',fmt(liq)+'×'));
+ }
+ const out=E.filter(c=>c.st==='no'), peras=P.filter(c=>c.st==='no');
+ let v;
+ if(out.length)v={c:'bad',t:'Descartada',s:'Falhou em: '+out.map(c=>c.t).join('; ')+'.'};
+ else if(P[0].st==='no')v={c:'warn',t:'Empresa boa, mas cara',s:'Passou nos filtros, porém o múltiplo está acima do limite para o juro atual.'};
+ else if(P[1].st==='no')v={c:'warn',t:'Preço com prêmio esticado',s:'O produto combinado passou de 22,5.'};
+ else if(!max)v={c:'warn',t:'Sem valor intrínseco',s:'A média dos 3 últimos anos é ≤ 0, então a fórmula não se aplica.'};
+ else if(preco<=max)v={c:'good',t:'Candidata clara de compra',s:'O preço atual está dentro do preço máximo (VI × 0,70).'};
+ else v={c:'warn',t:'Boa, mas acima do preço máximo',s:'Passou em tudo, só que o preço está acima do teto com 30% de margem de segurança.'};
+ const M=[['Valor intrínseco',vi!=null?cur+fmt(vi):'—'],['Preço máximo (×0,70)',max?cur+fmt(max):'—'],['Preço máximo conservador (×0,50)',cons?cur+fmt(cons):'—'],['Preço atual',cur+fmt(preco)],['Desconto vs. VI',vi?fmt((1-preco/vi)*100,1)+'%':'—'],[us?'P/E':'P/L',fmt(pl,1)+'×'],['CAGR usado (g, máx. 15%)',fmt(g,1)+'%'],[(us?'EPS':'LPA')+' médio 3 anos',fmt(mf)]];
+ return {v,groups:[['Filtro eliminatório (Gustavo + Graham)',E],['Preço e valuation',P],...(G.length?[['Outros critérios de Graham',G]]:[])],M,name:$('nome').value};
+}
+
+function checks(list,okT,badT,name){
+ const n=list.filter(c=>c.st==='no').length, w=list.filter(c=>c.st==='warn').length;
+ return {v:n?{c:'bad',t:badT,s:n+' critério(s) reprovado(s).'}:w?{c:'warn',t:okT+' (com ressalvas)',s:'Passou, mas há pontos de atenção.'}:{c:'good',t:okT,s:'Passou em todos os critérios.'},groups:[['Critérios',list]],M:[],name};
+}
+
+const T={
+br:{n:'Ação BR',form:()=>stockForm(0),run:()=>stock(0)},
+us:{n:'Ação EUA',form:()=>stockForm(1),run:()=>stock(1)},
+etf:{n:'ETF',form:()=>`<div class="g">${inp('nome','ETF','','ex.: IVVB11')}${sel('tipo','Tipo',[['a','Índice amplo (IVVB11, BOVA11, SPXR11)'],['t','Temático / setorial (HASH11, TECK11, NASD11)']])}${inp('pl','P/L atual do índice')}${inp('plm','P/L mediana histórica')}${inp('rf','Taxa sem risco (%)')}${inp('pct','% do ETF na sua carteira (temático)')}</div>`,
+ run:()=>{const t=$('tipo').value,name=$('nome').value;
+  if(t==='t'){const p=num('pct');if(p===null)return{err:'Informe a % do ETF na carteira.'};
+   const r=checks([C(p<=10?'ok':'no','Limite de 5–10% da carteira','Informado: '+fmt(p,1)+'%')],'Dentro do limite','Acima do limite',name);
+   r.v.s=p<=10?'Graham não compraria ETF temático; mantenha-o pequeno.':'Graham não compraria ETF temático e você passou do limite de 10%.';if(p<=10)r.v.c='warn';return r}
+  const pl=num('pl'),pm=num('plm'),rf=num('rf');if(pl===null||pm===null||rf===null)return{err:'Faltam: P/L atual, P/L mediana e taxa sem risco.'};
+  const ey=100/pl,d=(pl/pm-1)*100,ok=ey>rf;
+  return{v:!ok?{c:'bad',t:'Caro frente à renda fixa',s:'O earnings yield não supera a taxa sem risco.'}:d<=0?{c:'good',t:'Índice razoavelmente precificado',s:'Earnings yield acima da taxa sem risco e P/L abaixo da mediana.'}:{c:'warn',t:'Acima da mediana histórica',s:'Rende mais que a taxa sem risco, mas o P/L está acima da mediana.'},
+  groups:[['Critérios',[C(ok?'ok':'no','Earnings yield > taxa sem risco',fmt(ey)+'% vs. '+fmt(rf)+'%'),C(d<=0?'ok':'warn','P/L atual ≤ mediana histórica',fmt(d,1)+'% vs. mediana')]]],M:[['Earnings yield',fmt(ey)+'%'],['Desconto vs. mediana',fmt(d,1)+'%']],name}}},
+fii:{n:'FII',form:()=>`<div class="g">${inp('nome','FII','','ex.: HGLG11')}${sel('tipo','Tipo',[['t','Tijolo'],['p','Papel']])}${inp('pvp','P/VP')}${inp('dy','Dividend yield (% a.a.)')}${inp('vac','Vacância (%) — tijolo')}${inp('liq','Liquidez diária (R$ mi) — tijolo','','',H.liqf)}${inp('anos','Anos de track record da gestora — tijolo')}${sel('rat','Rating dos CRIs — papel',[['1','AA ou melhor'],['0','Abaixo de AA']])}</div>`,
+ run:()=>{const t=$('tipo').value,pvp=num('pvp'),dy=num('dy');if(pvp===null||dy===null)return{err:'Informe P/VP e dividend yield.'};
+  const name=$('nome').value;
+  if(t==='p')return checks([C(pvp<=1?'ok':'no','P/VP ≤ 1,0',fmt(pvp)),C(dy>=12?'ok':'no','Dividend yield ≥ 12%',fmt(dy)+'%'),C($('rat').value==='1'?'ok':'no','Rating dos CRIs ≥ AA')],'FII de papel aprovado','FII de papel reprovado',name);
+  const vac=num('vac'),liq=num('liq'),an=num('anos');if(vac===null||liq===null||an===null)return{err:'Para tijolo, informe vacância, liquidez e anos da gestora.'};
+  return checks([C(pvp<=1?'ok':pvp<=1.05?'warn':'no','P/VP ≤ 1,0 (ideal) / 1,05 (aceitável)',fmt(pvp)),C(dy>=8?'ok':'no','Dividend yield ≥ 8%',fmt(dy)+'%'),C(vac<=10?'ok':'no','Vacância ≤ 10%',fmt(vac,1)+'%'),C(liq>=1?'ok':'no','Liquidez diária ≥ R$ 1 mi',fmt(liq)+' mi'),C(an>=5?'ok':'no','Gestora com ≥ 5 anos de track record',an+' anos')],'FII de tijolo aprovado','FII de tijolo reprovado',name)}},
+cdb:{n:'CDB',form:()=>`<div class="g">${inp('nome','CDB / emissor')}${sel('aut','Emissor autorizado pelo BC?',yn)}${inp('val','Valor a aplicar nessa instituição (R$)')}${sel('res','É reserva de emergência?',yn)}${sel('liqd','Tem liquidez diária, sem carência?',yn)}${inp('tx','Taxa (% do CDI)')}</div>`,
+ run:()=>{const v=num('val'),tx=num('tx');if(v===null||tx===null)return{err:'Informe o valor e a taxa.'};
+  const r=$('res').value==='1';
+  return checks([C($('aut').value==='1'?'ok':'no','Emissor autorizado pelo BC'),C(v<=250000?'ok':'no','Valor ≤ R$ 250.000 por CPF/instituição (FGC)','R$ '+fmt(v,0)),r?C($('liqd').value==='1'?'ok':'no','Reserva de emergência com liquidez diária e sem carência'):C('skip','Liquidez diária','Não é reserva de emergência'),C(tx>=100?'ok':'no','Taxa ≥ 100% do CDI',fmt(tx,1)+'%')],'CDB aprovado','CDB reprovado',$('nome').value)}},
+car:{n:'Carteira',form:()=>`<div class="g">${inp('na','Quantidade de ações')}${inp('ns','Quantidade de setores diferentes')}${inp('rv','% em renda variável')}</div>`,
+ run:()=>{const a=num('na'),s=num('ns'),rv=num('rv');if(a===null||s===null||rv===null)return{err:'Preencha os três campos.'};
+  return checks([C(a>=10&&a<=30?'ok':'no','Entre 10 e 30 ações',a+' ações'),C(s>=4?'ok':'no','Pelo menos 4 setores',s+' setores'),C(rv>=25&&rv<=75?'ok':'no','Renda variável entre 25% e 75% (ideal 50/50)',fmt(rv,0)+'% RV / '+fmt(100-rv,0)+'% RF')],'Diversificação adequada','Diversificação fora das regras','')}}
+};
+
+document.addEventListener('click',e=>{const b=e.target.closest('.q');if(!b)return;e.preventDefault();const h=b.closest('label').querySelector('.help'),o=h.hidden;h.hidden=!o;b.setAttribute('aria-expanded',o)});
+let cur='br';
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function tab(k){cur=k;$('out').innerHTML='';$('form').innerHTML=T[k].form();
+ document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.k===k))}
+$('tabs').innerHTML=Object.entries(T).map(([k,t])=>`<button role="tab" data-k="${k}" aria-selected="false">${t.n}</button>`).join('');
+$('tabs').onclick=e=>{const k=e.target.dataset.k;if(k)tab(k)};
+$('run').onclick=()=>{
+ const r=T[cur].run(),o=$('out');
+ if(r.err){o.innerHTML=`<div class="err">${esc(r.err)}</div>`;return}
+ o.innerHTML=`<div class="v ${r.v.c}"><b>${esc(r.name?r.name+': ':'')}${esc(r.v.t)}</b><span>${esc(r.v.s)}</span></div>`+
+ (r.M.length?`<div class="m">${r.M.map(([a,b])=>`<div><small>${a}</small><strong>${b}</strong></div>`).join('')}</div>`:'')+
+ r.groups.map(([h,l])=>`<div class="panel" style="margin-bottom:14px"><h3 style="margin-top:0">${h}</h3>${l.map(c=>`<div class="row"><div class="t">${esc(c.t)}${c.d?`<small>${esc(c.d)}</small>`:''}</div><div class="tag ${c.st}">${lbl[c.st]}</div></div>`).join('')}</div>`).join('')+
+ `<p class="foot">Ferramenta de apoio ao seu guia, não é recomendação de investimento. Confira os dados na fonte (Fundamentus, Status Invest, Macrotrends).</p>`;
+ o.scrollIntoView({behavior:'smooth',block:'start'});
+};
+tab('br');
+</script>
+</body>
+</html>
